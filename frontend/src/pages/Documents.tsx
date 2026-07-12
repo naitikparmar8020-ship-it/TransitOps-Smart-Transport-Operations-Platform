@@ -49,7 +49,7 @@ function formatSize(kb: number) {
 
 export default function Documents() {
   const { toast } = useToast();
-  const [data] = React.useState<DocumentRecord[]>(seed);
+  const [data, setData] = React.useState<DocumentRecord[]>(seed);
   const [query, setQuery] = React.useState("");
   const [typeFilter, setTypeFilter] = React.useState<DocumentType | null>(null);
   const [selected, setSelected] = React.useState<DocumentRecord | null>(null);
@@ -265,20 +265,43 @@ export default function Documents() {
       </Sheet>
 
       {/* Upload form */}
-      <UploadForm open={formOpen} onOpenChange={setFormOpen} />
+      <UploadForm open={formOpen} onOpenChange={setFormOpen} onAdd={(d) => setData((prev) => [d, ...prev])} />
     </div>
   );
 }
 
-function UploadForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function UploadForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (d: DocumentRecord) => void }) {
   const { toast } = useToast();
+  const [docType, setDocType] = React.useState<DocumentType>("Vehicle Insurance");
+  const [linkedTo, setLinkedTo] = React.useState("");
+  const [expiry, setExpiry] = React.useState("");
+
+  const reset = () => {
+    setDocType("Vehicle Insurance"); setLinkedTo(""); setExpiry("");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const today = new Date().toISOString().slice(0, 10);
+    const expiryDate = expiry || today;
+    const daysUntilExpiry = Math.floor((new Date(expiryDate).getTime() - Date.now()) / 86400000);
+    const newDoc: DocumentRecord = {
+      id: `DOC-${Date.now()}`,
+      name: `${docType.replace(/\s/g, "_")}_${linkedTo || "NEW"}.pdf`,
+      type: docType,
+      linkedTo: linkedTo || "Unlinked",
+      uploadedDate: today,
+      expiryDate,
+      sizeKb: Math.floor(Math.random() * 3000 + 200),
+      status: daysUntilExpiry < 0 ? "expired" : daysUntilExpiry < 30 ? "expiring" : "valid",
+    };
+    onAdd(newDoc);
     onOpenChange(false);
+    reset();
     toast({ title: "Document uploaded", description: "New document added to the vault.", variant: "success" });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-lg">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-lg">
       <DialogHeader>
         <DialogTitle>Upload Document</DialogTitle>
         <DialogDescription>Add a new document to the compliance vault.</DialogDescription>
@@ -293,7 +316,7 @@ function UploadForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
         </div>
         <div className="space-y-2">
           <Label>Document Type</Label>
-          <Select defaultValue="Vehicle Insurance">
+          <Select value={docType} onChange={(ev) => setDocType(ev.target.value as DocumentType)}>
             {DOC_TYPES.map(({ type }) => (
               <option key={type}>{type}</option>
             ))}
@@ -301,11 +324,11 @@ function UploadForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
         </div>
         <div className="space-y-2">
           <Label>Linked To</Label>
-          <Input placeholder="VH-001 or DR-001" />
+          <Input placeholder="VH-001 or DR-001" value={linkedTo} onChange={(ev) => setLinkedTo(ev.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Expiry Date</Label>
-          <Input type="date" />
+          <Input type="date" value={expiry} onChange={(ev) => setExpiry(ev.target.value)} />
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

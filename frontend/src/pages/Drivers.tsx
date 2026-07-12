@@ -42,7 +42,7 @@ function scoreBar(score: number) {
 
 export default function Drivers() {
   const navigate = useNavigate();
-  const [data] = React.useState<Driver[]>(seed);
+  const [data, setData] = React.useState<Driver[]>(seed);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [region, setRegion] = React.useState("all");
@@ -239,41 +239,74 @@ export default function Drivers() {
       </Tabs>
 
       {/* Add form */}
-      <DriverForm open={formOpen} onOpenChange={setFormOpen} />
+      <DriverForm open={formOpen} onOpenChange={setFormOpen} onAdd={(d) => setData((prev) => [d, ...prev])} />
     </div>
   );
 }
 
-function DriverForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function DriverForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (d: Driver) => void }) {
   const { toast } = useToast();
+  const [name, setName] = React.useState("");
+  const [license, setLicense] = React.useState("");
+  const [category, setCategory] = React.useState("Class A");
+  const [expiry, setExpiry] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [region, setRegion] = React.useState("North");
+  const [dStatus, setDStatus] = React.useState<Driver["status"]>("available");
+
+  const reset = () => {
+    setName(""); setLicense(""); setCategory("Class A"); setExpiry("");
+    setPhone(""); setEmail(""); setRegion("North"); setDStatus("available");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#EC4899", "#14B8A6"];
+    const newDriver: Driver = {
+      id: `DR-${Date.now()}`,
+      name: name || "New Driver",
+      licenseNumber: license || "N/A",
+      licenseCategory: category,
+      licenseExpiry: expiry || new Date().toISOString().slice(0, 10),
+      phone: phone || "N/A",
+      email: email || "new@transitops.io",
+      safetyScore: 85,
+      status: dStatus,
+      region,
+      totalTrips: 0,
+      rating: 5.0,
+      joinedDate: new Date().toISOString().slice(0, 10),
+      avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+    };
+    onAdd(newDriver);
     onOpenChange(false);
-    toast({ title: "Driver added", description: "New driver added to your roster.", variant: "success" });
+    reset();
+    toast({ title: "Driver added", description: `${newDriver.name} added to your roster.`, variant: "success" });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-2xl">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Add Driver</DialogTitle>
         <DialogDescription>Add a new driver to the roster.</DialogDescription>
       </DialogHeader>
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Driver Name" placeholder="Jane Doe" />
-        <Field label="License Number" placeholder="DL123456A" />
+        <Field label="Driver Name" placeholder="Jane Doe" value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label="License Number" placeholder="DL123456A" value={license} onChange={(e) => setLicense(e.target.value)} />
         <div className="space-y-2">
           <Label>License Category</Label>
-          <Select defaultValue="Class A">
+          <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             {["Class A", "Class B", "Class C"].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </Select>
         </div>
-        <Field label="License Expiry" type="date" />
-        <Field label="Phone" placeholder="+1 555-123-4567" />
-        <Field label="Email" type="email" placeholder="jane.doe@transitops.io" />
+        <Field label="License Expiry" type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
+        <Field label="Phone" placeholder="+1 555-123-4567" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Field label="Email" type="email" placeholder="jane.doe@transitops.io" value={email} onChange={(e) => setEmail(e.target.value)} />
         <div className="space-y-2">
           <Label>Region</Label>
-          <Select defaultValue="North">
+          <Select value={region} onChange={(e) => setRegion(e.target.value)}>
             {["North", "South", "East", "West", "Central"].map((r) => (
               <option key={r}>{r}</option>
             ))}
@@ -281,7 +314,7 @@ function DriverForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
         </div>
         <div className="space-y-2">
           <Label>Status</Label>
-          <Select defaultValue="available">
+          <Select value={dStatus} onChange={(e) => setDStatus(e.target.value as Driver["status"])}>
             {["available", "on-trip", "off-duty", "suspended"].map((s) => (
               <option key={s}>{s}</option>
             ))}

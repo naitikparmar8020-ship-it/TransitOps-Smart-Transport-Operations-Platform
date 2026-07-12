@@ -98,7 +98,7 @@ const PERMISSIONS: Record<UserRole, Record<(typeof MODULES)[number], boolean>> =
 
 export default function Users() {
   const { toast } = useToast();
-  const [data] = React.useState<AppUser[]>(seed);
+  const [data, setData] = React.useState<AppUser[]>(seed);
   const [query, setQuery] = React.useState("");
   const [role, setRole] = React.useState("all");
   const [formOpen, setFormOpen] = React.useState(false);
@@ -271,20 +271,41 @@ export default function Users() {
         </TabsContent>
       </Tabs>
 
-      <UserForm open={formOpen} onOpenChange={setFormOpen} />
+      <UserForm open={formOpen} onOpenChange={setFormOpen} onAdd={(u) => setData((prev) => [u, ...prev])} />
     </div>
   );
 }
 
-function UserForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function UserForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (u: AppUser) => void }) {
   const { toast } = useToast();
+  const [name, setName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [uRole, setURole] = React.useState<UserRole>("Fleet Manager");
+  const [uStatus, setUStatus] = React.useState<"active" | "inactive">("active");
+
+  const reset = () => {
+    setName(""); setEmail(""); setURole("Fleet Manager"); setUStatus("active");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#EC4899", "#14B8A6"];
+    const newUser: AppUser = {
+      id: `USR-${Date.now()}`,
+      name: name || "New User",
+      email: email || "new@transitops.io",
+      role: uRole,
+      status: uStatus,
+      lastActive: new Date().toISOString().slice(0, 10),
+      avatarColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+    };
+    onAdd(newUser);
     onOpenChange(false);
-    toast({ title: "User added", description: "New team member invited to TransitOps.", variant: "success" });
+    reset();
+    toast({ title: "User added", description: `${newUser.name} invited to TransitOps.`, variant: "success" });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-lg">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-lg">
       <DialogHeader>
         <DialogTitle>Add User</DialogTitle>
         <DialogDescription>Invite a new team member and assign a role.</DialogDescription>
@@ -292,16 +313,16 @@ function UserForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-2">
           <Label>Full Name</Label>
-          <Input placeholder="Jane Cooper" />
+          <Input placeholder="Jane Cooper" value={name} onChange={(ev) => setName(ev.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Email</Label>
-          <Input type="email" placeholder="jane@company.com" />
+          <Input type="email" placeholder="jane@company.com" value={email} onChange={(ev) => setEmail(ev.target.value)} />
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select defaultValue="Fleet Manager">
+            <Select value={uRole} onChange={(ev) => setURole(ev.target.value as UserRole)}>
               {ROLES.map((r) => (
                 <option key={r}>{r}</option>
               ))}
@@ -309,7 +330,7 @@ function UserForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
           </div>
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select defaultValue="active">
+            <Select value={uStatus} onChange={(ev) => setUStatus(ev.target.value as "active" | "inactive")}>
               {["active", "inactive"].map((s) => (
                 <option key={s}>{s}</option>
               ))}
