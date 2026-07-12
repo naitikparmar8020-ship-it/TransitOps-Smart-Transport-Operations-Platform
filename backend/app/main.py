@@ -1,18 +1,10 @@
 from fastapi import FastAPI
+# from app.database.database import engine, Base
 
-app = FastAPI(
-    title="TransitOps API",
-    version="1.0.0"
-)
+app = FastAPI(title="TransitOps API")
 
 @app.get("/")
-def home():
+def root():
     return {
-        "message": "Welcome to TransitOps API"
-    }
-
-@app.get("/health")
-def health():
-    return {
-        "status": "Backend Running Successfully"
+        "message": "TransitOps Backend Running Successfully 🚀"
     }
