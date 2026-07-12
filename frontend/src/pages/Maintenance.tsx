@@ -40,7 +40,7 @@ const CATEGORY_OPTIONS = ["Preventive", "Corrective", "Inspection", "Emergency"]
 
 export default function Maintenance() {
   const { toast } = useToast();
-  const [data] = React.useState<MaintenanceRecord[]>(seed);
+  const [data, setData] = React.useState<MaintenanceRecord[]>(seed);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [formOpen, setFormOpen] = React.useState(false);
@@ -211,20 +211,45 @@ export default function Maintenance() {
       </Card>
 
       {/* New maintenance form */}
-      <MaintenanceForm open={formOpen} onOpenChange={setFormOpen} />
+      <MaintenanceForm open={formOpen} onOpenChange={setFormOpen} onAdd={(m) => setData((prev) => [m, ...prev])} />
     </div>
   );
 }
 
-function MaintenanceForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function MaintenanceForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (m: MaintenanceRecord) => void }) {
   const { toast } = useToast();
+  const [vehicleId, setVehicleId] = React.useState(vehicles[0]?.id ?? "");
+  const [issue, setIssue] = React.useState("");
+  const [mechanic, setMechanic] = React.useState("");
+  const [category, setCategory] = React.useState(CATEGORY_OPTIONS[0]);
+  const [startDate, setStartDate] = React.useState("");
+  const [cost, setCost] = React.useState("");
+
+  const reset = () => {
+    setVehicleId(vehicles[0]?.id ?? ""); setIssue(""); setMechanic("");
+    setCategory(CATEGORY_OPTIONS[0]); setStartDate(""); setCost("");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const newRecord: MaintenanceRecord = {
+      id: `MT-${Date.now()}`,
+      vehicleId,
+      issue: issue || "General Maintenance",
+      mechanic: mechanic || "Unassigned",
+      startDate: startDate || new Date().toISOString().slice(0, 10),
+      endDate: null,
+      cost: Number(cost) || 0,
+      status: "scheduled",
+      category,
+    };
+    onAdd(newRecord);
     onOpenChange(false);
+    reset();
     toast({ title: "Maintenance scheduled", description: "New maintenance record created.", variant: "success" });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-2xl">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>New Maintenance</DialogTitle>
         <DialogDescription>Schedule a maintenance job for a vehicle.</DialogDescription>
@@ -232,7 +257,7 @@ function MaintenanceForm({ open, onOpenChange }: { open: boolean; onOpenChange: 
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Vehicle</Label>
-          <Select defaultValue={vehicles[0]?.id}>
+          <Select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name} · {v.registrationNumber}
@@ -242,15 +267,15 @@ function MaintenanceForm({ open, onOpenChange }: { open: boolean; onOpenChange: 
         </div>
         <div className="space-y-2">
           <Label>Issue</Label>
-          <Input placeholder="Brake pad replacement" required />
+          <Input placeholder="Brake pad replacement" required value={issue} onChange={(e) => setIssue(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Mechanic</Label>
-          <Input placeholder="John Carter" required />
+          <Input placeholder="John Carter" required value={mechanic} onChange={(e) => setMechanic(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Category</Label>
-          <Select defaultValue={CATEGORY_OPTIONS[0]}>
+          <Select value={category} onChange={(e) => setCategory(e.target.value)}>
             {CATEGORY_OPTIONS.map((c) => (
               <option key={c}>{c}</option>
             ))}
@@ -258,11 +283,11 @@ function MaintenanceForm({ open, onOpenChange }: { open: boolean; onOpenChange: 
         </div>
         <div className="space-y-2">
           <Label>Start Date</Label>
-          <Input type="date" required />
+          <Input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Cost ($)</Label>
-          <Input type="number" placeholder="1200" min={0} />
+          <Input type="number" placeholder="1200" min={0} value={cost} onChange={(e) => setCost(e.target.value)} />
         </div>
         <DialogFooter className="sm:col-span-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

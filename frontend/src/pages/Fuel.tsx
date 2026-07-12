@@ -45,7 +45,7 @@ function efficiencyVariant(eff: number): "emerald" | "amber" | "red" {
 
 export default function Fuel() {
   const { toast } = useToast();
-  const [data] = React.useState<FuelLog[]>(seed);
+  const [data, setData] = React.useState<FuelLog[]>(seed);
   const [query, setQuery] = React.useState("");
   const [formOpen, setFormOpen] = React.useState(false);
   const [page, setPage] = React.useState(1);
@@ -199,20 +199,47 @@ export default function Fuel() {
       </Card>
 
       {/* Add fuel log form */}
-      <FuelForm open={formOpen} onOpenChange={setFormOpen} />
+      <FuelForm open={formOpen} onOpenChange={setFormOpen} onAdd={(f) => setData((prev) => [f, ...prev])} />
     </div>
   );
 }
 
-function FuelForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function FuelForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (f: FuelLog) => void }) {
   const { toast } = useToast();
+  const [vehicleId, setVehicleId] = React.useState(vehicles[0]?.id ?? "");
+  const [date, setDate] = React.useState("");
+  const [liters, setLiters] = React.useState("");
+  const [cost, setCost] = React.useState("");
+  const [odometer, setOdometer] = React.useState("");
+  const [station, setStation] = React.useState("");
+
+  const reset = () => {
+    setVehicleId(vehicles[0]?.id ?? ""); setDate(""); setLiters("");
+    setCost(""); setOdometer(""); setStation("");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const l = Number(liters) || 0;
+    const c = Number(cost) || 0;
+    const odo = Number(odometer) || 0;
+    const newLog: FuelLog = {
+      id: `FL-${Date.now()}`,
+      vehicleId,
+      date: date || new Date().toISOString().slice(0, 10),
+      liters: l,
+      cost: c,
+      odometer: odo,
+      efficiency: l > 0 ? parseFloat((odo / l).toFixed(1)) : 0,
+      station: station || "Unknown",
+    };
+    onAdd(newLog);
     onOpenChange(false);
+    reset();
     toast({ title: "Fuel log added", description: "New fuel entry recorded.", variant: "success" });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-2xl">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Add Fuel Log</DialogTitle>
         <DialogDescription>Record a new fuel purchase for a vehicle.</DialogDescription>
@@ -220,7 +247,7 @@ function FuelForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Vehicle</Label>
-          <Select defaultValue={vehicles[0]?.id}>
+          <Select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name} · {v.registrationNumber}
@@ -230,23 +257,23 @@ function FuelForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
         </div>
         <div className="space-y-2">
           <Label>Date</Label>
-          <Input type="date" required />
+          <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Fuel (Liters)</Label>
-          <Input type="number" placeholder="120" min={0} required />
+          <Input type="number" placeholder="120" min={0} required value={liters} onChange={(e) => setLiters(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Fuel Cost ($)</Label>
-          <Input type="number" placeholder="180" min={0} required />
+          <Input type="number" placeholder="180" min={0} required value={cost} onChange={(e) => setCost(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Odometer (km)</Label>
-          <Input type="number" placeholder="45000" min={0} required />
+          <Input type="number" placeholder="45000" min={0} required value={odometer} onChange={(e) => setOdometer(e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Station</Label>
-          <Input placeholder="Shell Highway 12" required />
+          <Input placeholder="Shell Highway 12" required value={station} onChange={(e) => setStation(e.target.value)} />
         </div>
         <DialogFooter className="sm:col-span-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

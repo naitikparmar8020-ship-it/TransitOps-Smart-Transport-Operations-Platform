@@ -47,7 +47,7 @@ const TYPE_BADGE: Record<ExpenseType, BadgeProps["variant"]> = {
 
 export default function Expenses() {
   const { toast } = useToast();
-  const [data] = React.useState<Expense[]>(seed);
+  const [data, setData] = React.useState<Expense[]>(seed);
   const [query, setQuery] = React.useState("");
   const [type, setType] = React.useState("all");
   const [approval, setApproval] = React.useState("all");
@@ -225,20 +225,41 @@ export default function Expenses() {
       </Card>
 
       {/* Add form */}
-      <ExpenseForm open={formOpen} onOpenChange={setFormOpen} />
+      <ExpenseForm open={formOpen} onOpenChange={setFormOpen} onAdd={(exp) => setData((prev) => [exp, ...prev])} />
     </div>
   );
 }
 
-function ExpenseForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function ExpenseForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (e: Expense) => void }) {
   const { toast } = useToast();
+  const [eType, setEType] = React.useState<ExpenseType>("Fuel");
+  const [amount, setAmount] = React.useState("");
+  const [vehicleId, setVehicleId] = React.useState("");
+  const [date, setDate] = React.useState("");
+  const [notes, setNotes] = React.useState("");
+
+  const reset = () => {
+    setEType("Fuel"); setAmount(""); setVehicleId(""); setDate(""); setNotes("");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const newExpense: Expense = {
+      id: `EX-${Date.now()}`,
+      type: eType,
+      amount: Number(amount) || 0,
+      vehicleId: vehicleId || null,
+      date: date || new Date().toISOString().slice(0, 10),
+      notes: notes || eType,
+      approved: false,
+    };
+    onAdd(newExpense);
     onOpenChange(false);
+    reset();
     toast({ title: "Expense added", description: "New expense recorded.", variant: "success" });
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-2xl">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Add Expense</DialogTitle>
         <DialogDescription>Record a new operational expense.</DialogDescription>
@@ -246,7 +267,7 @@ function ExpenseForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Type</Label>
-          <Select defaultValue="Fuel">
+          <Select value={eType} onChange={(ev) => setEType(ev.target.value as ExpenseType)}>
             {EXPENSE_TYPES.map((t) => (
               <option key={t}>{t}</option>
             ))}
@@ -254,11 +275,11 @@ function ExpenseForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
         </div>
         <div className="space-y-2">
           <Label>Amount ($)</Label>
-          <Input type="number" placeholder="1200" min={0} />
+          <Input type="number" placeholder="1200" min={0} value={amount} onChange={(ev) => setAmount(ev.target.value)} />
         </div>
         <div className="space-y-2">
           <Label>Vehicle</Label>
-          <Select defaultValue="">
+          <Select value={vehicleId} onChange={(ev) => setVehicleId(ev.target.value)}>
             <option value="">— None —</option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
@@ -269,11 +290,11 @@ function ExpenseForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
         </div>
         <div className="space-y-2">
           <Label>Date</Label>
-          <Input type="date" />
+          <Input type="date" value={date} onChange={(ev) => setDate(ev.target.value)} />
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label>Notes</Label>
-          <Textarea placeholder="Add a short description..." />
+          <Textarea placeholder="Add a short description..." value={notes} onChange={(ev) => setNotes(ev.target.value)} />
         </div>
         <DialogFooter className="sm:col-span-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

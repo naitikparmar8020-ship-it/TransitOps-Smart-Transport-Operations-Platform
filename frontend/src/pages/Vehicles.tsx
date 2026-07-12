@@ -30,13 +30,18 @@ import { useToast } from "@/components/ui/toast";
 import { vehicles as seed } from "@/data";
 import type { Vehicle } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
+import { vehicleService } from "@/lib/services";
+import { useSupabaseQuery } from "@/hooks/useSupabase";
 
 const STATUS_OPTIONS = ["all", "available", "on-trip", "in-shop", "retired"];
 const TYPE_OPTIONS = ["all", "Truck", "Van", "Trailer", "Pickup", "Tanker", "Bus"];
 
 export default function Vehicles() {
   const { toast } = useToast();
-  const [data] = React.useState<Vehicle[]>(seed);
+  const { data, setData, loading } = useSupabaseQuery<Vehicle>(
+    React.useCallback(() => vehicleService.getAll(), []),
+    seed,
+  );
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [type, setType] = React.useState("all");
@@ -281,51 +286,87 @@ export default function Vehicles() {
       </Sheet>
 
       {/* Add form */}
-      <VehicleForm open={formOpen} onOpenChange={setFormOpen} />
+      <VehicleForm open={formOpen} onOpenChange={setFormOpen} onAdd={(v) => setData((prev) => [v, ...prev])} />
     </div>
   );
 }
 
-function VehicleForm({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function VehicleForm({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (v: Vehicle) => void }) {
   const { toast } = useToast();
+  const [reg, setReg] = React.useState("");
+  const [name, setName] = React.useState("");
+  const [model, setModel] = React.useState("");
+  const [vType, setVType] = React.useState<Vehicle["type"]>("Truck");
+  const [maxLoad, setMaxLoad] = React.useState("");
+  const [odo, setOdo] = React.useState("");
+  const [cost, setCost] = React.useState("");
+  const [region, setRegion] = React.useState("North");
+  const [purchaseDate, setPurchaseDate] = React.useState("");
+  const [vStatus, setVStatus] = React.useState<Vehicle["status"]>("available");
+
+  const reset = () => {
+    setReg(""); setName(""); setModel(""); setVType("Truck");
+    setMaxLoad(""); setOdo(""); setCost(""); setRegion("North");
+    setPurchaseDate(""); setVStatus("available");
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const COLORS = ["#2563EB", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#06B6D4", "#EC4899", "#14B8A6"];
+    const newVehicle: Vehicle = {
+      id: `VH-${Date.now()}`,
+      registrationNumber: reg || "N/A",
+      name: name || `${vType} New`,
+      model: model || "Unknown",
+      type: vType,
+      maxLoadKg: Number(maxLoad) || 0,
+      odometer: Number(odo) || 0,
+      acquisitionCost: Number(cost) || 0,
+      status: vStatus,
+      region,
+      purchaseDate: purchaseDate || new Date().toISOString().slice(0, 10),
+      fuelEfficiency: 7.5,
+      imageColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+    };
+    onAdd(newVehicle);
     onOpenChange(false);
-    toast({ title: "Vehicle added", description: "New vehicle registered to your fleet.", variant: "success" });
+    reset();
+    toast({ title: "Vehicle added", description: `${newVehicle.name} registered to your fleet.`, variant: "success" });
+    vehicleService.create(newVehicle).catch(() => {});
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} className="max-w-2xl">
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }} className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Add Vehicle</DialogTitle>
         <DialogDescription>Register a new vehicle to the fleet.</DialogDescription>
       </DialogHeader>
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Registration Number" placeholder="TX-45AB-1234" />
-        <Field label="Vehicle Name" placeholder="Truck A1" />
-        <Field label="Model" placeholder="Volvo FH16" />
+        <Field label="Registration Number" placeholder="TX-45AB-1234" value={reg} onChange={(e) => setReg(e.target.value)} />
+        <Field label="Vehicle Name" placeholder="Truck A1" value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label="Model" placeholder="Volvo FH16" value={model} onChange={(e) => setModel(e.target.value)} />
         <div className="space-y-2">
           <Label>Type</Label>
-          <Select defaultValue="Truck">
+          <Select value={vType} onChange={(e) => setVType(e.target.value as Vehicle["type"])}>
             {["Truck", "Van", "Trailer", "Pickup", "Tanker", "Bus"].map((t) => (
               <option key={t}>{t}</option>
             ))}
           </Select>
         </div>
-        <Field label="Max Load (kg)" placeholder="12000" type="number" />
-        <Field label="Odometer (km)" placeholder="45000" type="number" />
-        <Field label="Acquisition Cost ($)" placeholder="85000" type="number" />
+        <Field label="Max Load (kg)" placeholder="12000" type="number" value={maxLoad} onChange={(e) => setMaxLoad(e.target.value)} />
+        <Field label="Odometer (km)" placeholder="45000" type="number" value={odo} onChange={(e) => setOdo(e.target.value)} />
+        <Field label="Acquisition Cost ($)" placeholder="85000" type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
         <div className="space-y-2">
           <Label>Region</Label>
-          <Select defaultValue="North">
+          <Select value={region} onChange={(e) => setRegion(e.target.value)}>
             {["North", "South", "East", "West", "Central"].map((r) => (
               <option key={r}>{r}</option>
             ))}
           </Select>
         </div>
-        <Field label="Purchase Date" type="date" />
+        <Field label="Purchase Date" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
         <div className="space-y-2">
           <Label>Status</Label>
-          <Select defaultValue="available">
+          <Select value={vStatus} onChange={(e) => setVStatus(e.target.value as Vehicle["status"])}>
             {["available", "on-trip", "in-shop", "retired"].map((s) => (
               <option key={s}>{s}</option>
             ))}

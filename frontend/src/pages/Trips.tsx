@@ -38,7 +38,7 @@ const STATUS_OPTIONS = ["all", "draft", "dispatched", "completed", "cancelled"];
 
 export default function Trips() {
   const navigate = useNavigate();
-  const [data] = React.useState<Trip[]>(seed);
+  const [data, setData] = React.useState<Trip[]>(seed);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [wizardOpen, setWizardOpen] = React.useState(false);
@@ -189,7 +189,7 @@ export default function Trips() {
       </Card>
 
       {/* Create trip wizard */}
-      <CreateTripWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+      <CreateTripWizard open={wizardOpen} onOpenChange={setWizardOpen} onAdd={(t) => setData((prev) => [t, ...prev])} />
     </div>
   );
 }
@@ -218,7 +218,7 @@ const STEPS = [
   { n: 3, label: "Review" },
 ];
 
-function CreateTripWizard({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function CreateTripWizard({ open, onOpenChange, onAdd }: { open: boolean; onOpenChange: (o: boolean) => void; onAdd: (t: Trip) => void }) {
   const { toast } = useToast();
   const [step, setStep] = React.useState(1);
   const [form, setForm] = React.useState<WizardState>(emptyState);
@@ -232,10 +232,27 @@ function CreateTripWizard({ open, onOpenChange }: { open: boolean; onOpenChange:
   };
 
   const dispatch = () => {
+    const newTrip: Trip = {
+      id: `TR-${Date.now()}`,
+      code: `TRIP-${new Date().getFullYear()}${String(Math.floor(Math.random() * 900 + 100)).padStart(3, "0")}`,
+      source: form.source || "Origin",
+      destination: form.destination || "Destination",
+      vehicleId: form.vehicleId,
+      driverId: form.driverId,
+      cargoWeightKg: Number(form.cargoWeightKg) || 0,
+      distanceKm: Number(form.distanceKm) || 0,
+      status: "dispatched",
+      startDate: new Date().toISOString().slice(0, 10),
+      endDate: null,
+      fuelUsedL: 0,
+      expense: 0,
+      revenue: 0,
+    };
+    onAdd(newTrip);
     onOpenChange(false);
     toast({
       title: "Trip dispatched",
-      description: `New trip from ${form.source || "origin"} to ${form.destination || "destination"} created (demo).`,
+      description: `New trip from ${newTrip.source} to ${newTrip.destination} created.`,
       variant: "success",
     });
     reset();

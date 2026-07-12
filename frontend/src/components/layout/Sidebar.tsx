@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
 import { navItems } from "./navConfig";
 import { Logo } from "@/components/common/Logo";
@@ -53,19 +53,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                 )
               }
             >
-              {({ isActive }) => (
-                <>
-                  {isActive && !collapsed && (
-                    <motion.span
-                      layoutId="sidebar-active"
-                      className="absolute inset-0 -z-10 rounded-lg bg-primary"
-                      transition={{ type: "spring", damping: 28, stiffness: 320 }}
-                    />
-                  )}
-                  <item.icon className="size-[18px] shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
-                </>
-              )}
+              <item.icon className="size-[18px] shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
             </NavLink>
           );
           return collapsed ? (
