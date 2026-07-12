@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database.database import engine, Base
 from app.models.user import User 
 from app.models.vehicle import Vehicle # <-- ADD THIS (creates the table)
-from app.api import auth, vehicles # <-- ADD vehicles HERE
+from app.models.driver import Driver
+from app.api import auth, vehicles , drivers # <-- ADD vehicles HERE
 
 # Initialize database tables
 Base.metadata.create_all(bind=engine)
